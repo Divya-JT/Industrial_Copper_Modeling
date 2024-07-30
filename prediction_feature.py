@@ -2,8 +2,21 @@ from datetime import date
 import numpy as np
 import pickle
 import streamlit as st
+from sklearn.preprocessing import LabelEncoder 
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+#from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+
+
+
+# ALGORITHMS
+#from sklearn.linear_model import LogisticRegression
+#from sklearn.tree import DecisionTreeClassifier
 
 # user input options
+
+
 
 class options:
 
@@ -28,9 +41,39 @@ class options:
                         1665584642, 1665584662, 1668701376, 1668701698, 1668701718, 
                         1668701725, 1670798778, 1671863738, 1671876026, 1690738206, 
                         1690738219, 1693867550, 1693867563, 1721130331, 1722207579]
+    
 
+    # dump data
+    # dataset:
+    #X, y = load_iris(return_X_y=True)
+    #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2)
 
+    # train model:
+    #classifier = RandomForestRegressor() # depends on your computer
+    #classifier.fit(X_train, y_train)
 
+    # save model
+    #with open(r'models\regression_model.pkl', 'wb') as f:
+        #pickle.dump(classifier, f)
+# Load models
+@st.cache(allow_output_mutation=True)
+def load_models():
+    with open('models/regression_model.pkl', 'rb') as f:
+        regression_model = pickle.load(f)
+    with open('models/classification_model.pkl', 'rb') as f:
+        classification_model = pickle.load(f)
+    return regression_model, classification_model
+
+# Prediction functions
+def predict_regression(model, user_data):
+    y_prediction = model.predict(user_data)
+    # Inverse transform for log transformation data
+    selling_price = np.exp(y_prediction[0])
+    return round(selling_price, 2)
+
+def predict_classification(model, user_data):
+    y_prediction = model.predict(user_data)
+    return y_prediction[0]
 # Get input data from users both regression and classification methods
 
 class prediction:
@@ -87,11 +130,16 @@ class prediction:
         if button:
             
             # load the regression pickle model
-            with open(r'models\regression_model.pkl', 'rb') as f:
-                model = pickle.load(f)
+            #with open(r'models\regression_model.pkl', 'rb') as f:
+            #   unpickler = pickle.Unpickler(f)
+            #   model = unpickler.load()
+
+            #st.write(model)
             
+            model = RandomForestRegressor()
+
             # make array for all user input values in required order for model prediction
-            user_data = np.array([[customer, 
+            user_data = np.array([[customer,
                                 country, 
                                 options.status_dict[status], 
                                 options.item_type_dict[item_type], 
@@ -104,10 +152,10 @@ class prediction:
                                 delivery_date.day, delivery_date.month, delivery_date.year]])
             
             # model predict the selling price based on user input
-            y_pred = model.predict(user_data)
+            y_prediction = model.predict(user_data)
 
             # inverse transformation for log transformation data
-            selling_price = np.exp(y_pred[0])
+            selling_price = np.exp(y_prediction[0])
 
             # round the value with 2 decimal point (Eg: 1.35678 to 1.36)
             selling_price = round(selling_price, 2)
@@ -143,9 +191,9 @@ class prediction:
                 delivery_date = st.date_input(label='Delivery Date', min_value=date(2020,8,1), 
                                             max_value=date(2022,2,28), value=date(2020,8,1))
                 
-                customer = st.text_input(label='Customer ID (Min: 12458000 & Max: 2147484000)')
+                #customer = st.text_input(label='Customer ID (Min: 12458000 & Max: 2147484000)')
 
-                selling_price_log = st.text_input(label='Selling Price (Min: 0.1 & Max: 100001000)')
+                #selling_price_log = st.text_input(label='Selling Price (Min: 0.1 & Max: 100001000)')
 
                 application = st.selectbox(label='Application', options=options.application_values)
 
@@ -167,11 +215,11 @@ class prediction:
         if button:
             
             # load the classification pickle model
-            with open(r'models\classification_model.pkl', 'rb') as f:
-                model = pickle.load(f)
-            
+            #with open(r'models\classification_model.pkl', 'rb') as f:
+                #model = pickle.load(f)
+            model =  RandomForestRegressor()
             # make array for all user input values in required order for model prediction
-            user_data = np.array([[customer, 
+            user_data = np.array([[ 
                                 country, 
                                 options.item_type_dict[item_type], 
                                 application, 
@@ -179,15 +227,15 @@ class prediction:
                                 product_ref, 
                                 np.log(float(quantity_log)), 
                                 np.log(float(thickness_log)),
-                                np.log(float(selling_price_log)),
+                                #np.log(float(selling_price_log)),
                                 item_date.day, item_date.month, item_date.year,
                                 delivery_date.day, delivery_date.month, delivery_date.year]])
             
             # model predict the status based on user input
-            y_pred = model.predict(user_data)
+            y_prediction = model.predict(user_data)
 
             # we get the single output in list, so we access the output using index method
-            status = y_pred[0]
+            status = y_prediction[0]
 
             return status
 

@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from main_functions import *
-from sklearn.preprocessing import LabelEncoder 
+from sklearn.preprocessing import LabelEncoder,OneHotEncoder,StandardScaler
 import os
 from streamlit_option_menu import option_menu
 from streamlit_extras.stylable_container import stylable_container
@@ -9,9 +9,12 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.express as px 
+from prediction_feature import *
+import pickle
 
 
 # ALGORITHMS
+from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
@@ -20,7 +23,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 
 # EVALUATION METRICS
 from sklearn.metrics import accuracy_score, auc,precision_score,recall_score,f1_score,roc_auc_score, roc_curve,auc
-
+from sklearn.metrics import mean_squared_error
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
 
@@ -43,32 +46,73 @@ st.set_page_config (layout="wide", page_title="Industrial Copper Modelling")
 with st.sidebar:
     select = option_menu("Industrial Copper Modelling", ["Home","Skewness","Descriptive Statistics","Machine Learning", "Prediction"])
 
+
+
 def show_prediction():
+    tab1, tab2 = st.tabs(['PREDICT SELLING PRICE', 'PREDICT STATUS'])
+    with tab1:
+        try:
+            selling_price = prediction.regression()
+            st.write(selling_price)
+
+            if selling_price:
+                # apply custom css style for prediction text
+                #style_prediction()
+                st.markdown(f'### <div class="center-text">Predicted Selling Price = {selling_price}</div>', unsafe_allow_html=True)
+                st.balloons()
+        
+
+        except ValueError:
+            col1,col2,col3 = st.columns([0.26,0.55,0.26])
+            with col2:
+                st.warning('##### Quantity Tons / Customer ID is empty')
+
+    with tab2:
+        try:
+            status = prediction.classification()
+            if status == 1:
+                # apply custom css style for prediction text
+                #style_prediction()
+                st.markdown(f'### <div class="center-text">Predicted Status = Won</div>', unsafe_allow_html=True)
+                st.balloons()
+                
+
+            elif status == 0:
+                
+                # apply custom css style for prediction text
+                #style_prediction()
+                st.markdown(f'### <div class="center-text">Predicted Status = Lost</div>', unsafe_allow_html=True)
+                st.snow()
+        
+        except ValueError:
+            col1,col2,col3 = st.columns([0.15,0.70,0.15])
+            with col2:
+                st.warning('##### Quantity Tons / Customer ID / Selling Price is empty')
+
+
     pass
 
+
+
+
 def show_evaluation_data(type, train: any, test:any):
-    st.write(f"Train:{train} Test : {test}")
+    #st.write(f"Train:{train} Test : {test}")
     data = [{'Train': train, 'Test':test}]
 
-    st.subheader(f"\"{type}\" data evaluation")
-    col1, col2 = st.columns([1,1])
+    st.header(fr"**:orange[{type}]**  data evaluation")
+    col1, col2 = st.columns([1,6])
     with col1: 
-        st.write("**Train data:**")
+        st.subheader(r"**Train data:**")
     with col2:
-        st.write(train)
+        st.subheader(fr"***:orange[{train}]***")
 
-    col1, col2 = st.columns([1,1])
+    col1, col2 = st.columns([1,6])
     with col1: 
-        st.write("**Test data:**")
+        st.subheader(r"**Test data:**")
     with col2:
-        st.write(test)
+        st.subheader(fr"***:orange[{test}]***")
     
 
-    df = pd.DataFrame(data={'Train':train, 'Test':test}, index=[type])
-    #df = df.astype(float)
-    #pd.set_option('display.float_format', lambda x: '%f')
-    st.markdown(df.to_markdown())
-    #st.write(df.dtypes)
 
 
 
@@ -89,13 +133,8 @@ def show_home_screen():
         
 pass
 
-
-if select == "Home":
-    show_home_screen()
-    pass
-elif select == "Skewness":
+def show_Skewness():
     #skewness_and_normalization()    
-    
     option = st.selectbox(
     "Select Continuous data from the list ",
     ['quantity tons', 'customer', 'country', 'application',
@@ -106,40 +145,36 @@ elif select == "Skewness":
         st.session_state.industrial_copper_data[option] = pd.to_numeric(st.session_state.industrial_copper_data[option], errors='coerce')
 
         skew_result = st.session_state.industrial_copper_data[option].skew()
-        st.write(skew_result)
+        col1, col2 = st.columns([0.45,1])
+        col1.subheader(r"**Skewness Result**")
+        col2.subheader(fr"***{skew_result}***")            
+        #st.write(skew_result)  
 
         plt.hist(skew_result, bins=20)
         #sns.boxplot(skew_result)
         # Display the plot in Streamlit
         st.pyplot()
-
-
-
-       
-        
         col_data = st.session_state.industrial_copper_data[option]     
-        st.write(col_data)  
+        
+        #st.write(col_data)  
+        st.subheader("Normlized Data")
         normalize_data = (col_data-col_data.mean())/(col_data.max()-col_data.min())
+        #fig = px.histogram(col_data, x=option)
+        #st.plotly_chart(figure_or_data=fig)
         
-        
-        fig = px.histogram(col_data, x=option)
-        st.plotly_chart(figure_or_data=fig)
         plt.hist(normalize_data, bins=20)
         # Display the plot in Streamlit
         st.pyplot()
 
-       
-    
     pass
 
-elif select == "Descriptive Statistics":
-    descriptive_statistics()
+def show_descriptive_statistics():
     st.write("Data  Distribution")
 
     option = st.selectbox(
     "Select data from the list ",
     ['quantity tons', 'customer', 'country', 'application',
-    'thickness', 'width', 'product_ref', 'selling_price', 'status', 'item type', 'material_ref'])
+    'thickness', 'width', 'product_ref', 'selling_price', 'status', 'item type'])
     
     fig = px.histogram(st.session_state.industrial_copper_data[option], nbins=20)
     fig.update_layout(
@@ -156,11 +191,13 @@ elif select == "Descriptive Statistics":
     st.plotly_chart(fig, theme=None, use_container_width=True)
 
     pass
-elif select == "Machine Learning":
-    machine_learning()
+
+## Machine learning
+def show_machine_learning():
     #df = st.session_state.industrial_copper_data
     #df.drop('material_ref'),axis = 1, inplace = True
     algorithm_options = [
+    'Linear Regression',
     'Logistic Regression',
     'KNeighbors Regressor',
     'Decision Tree Regressor',
@@ -171,12 +208,13 @@ elif select == "Machine Learning":
 
     # Create the selectbox widget with a label and options
     selected_algorithm = st.selectbox('Select an Algorithm', algorithm_options)
-    selected_evaluation_metrics = st.selectbox('Select an Evaluation Metrics', evaluation_matrics_options)
+    #selected_evaluation_metrics = st.selectbox('Select an Evaluation Metrics', evaluation_matrics_options)
     
     model_map = {
+    'Linear Regression': LinearRegression(),
     'Logistic Regression': LogisticRegression(),
     'KNeighbors Regressor': KNeighborsRegressor(),
-    'Decision Tree Regressorr': DecisionTreeRegressor(),
+    'Decision Tree Regressor': DecisionTreeRegressor(),
     'Random Forest Regressor': RandomForestRegressor(),
     'Gradient Boosting Regressor': GradientBoostingRegressor()
     }
@@ -206,44 +244,60 @@ elif select == "Machine Learning":
     train_prediction = model.predict(x_train)
     test_prediction = model.predict(x_test)
 
+    # Example: Check types and unique values
+    #st.write("True labels type:", type(y_binary))
+    #st.write("True labels type:", type(y_train))
+    #st.write("Predicted values type:", type(train_prediction))
+    #st.write("Test values type:", type(test_prediction))
 
-    train_data: any = None
-    test_data: any = None
-    if(selected_evaluation_metrics == "accuracy_score"):
-        train_data = accuracy_score(y_train,train_prediction)
-        test_data = accuracy_score(y_test,test_prediction)
+    #c1,c2,c3,c4 = st.columns([1,1,1,1])
+    #c1.write(f"Unique true labels:{np.unique(y_binary)}")
+    #c2.write(f"unique labels type:{np.unique(y_train)}")
+    #c3.write(f"Unique predicted values:{np.unique(train_prediction)}")
+    #c4.write(f"Unique Test values:{np.unique(test_prediction)}")
 
-    elif(selected_evaluation_metrics == "precision_score"):
-        train_data = precision_score(y_train,train_prediction)
-        test_data = precision_score(y_test,test_prediction)
+    threshold = 0.5
+    train_prediction = (train_prediction > threshold).astype(int)
+    test_prediction = (test_prediction > threshold).astype(int)
+    #y_true = st.session_state.industrial_copper_data["selling_price"]
+    #mse = mean_squared_error(y_binary, test_prediction)
 
-    elif(selected_evaluation_metrics == "recall_score"):
-        train_data = recall_score(y_train,train_prediction)
-        test_data = recall_score(y_test,test_prediction)
 
-    elif(selected_evaluation_metrics == "f1_score"):
-        train_data = f1_score(y_train,train_prediction)
-        test_data = f1_score(y_test,test_prediction)
-
-    elif(selected_evaluation_metrics == "roc_auc_score"):
-        train_data = roc_auc_score(y_train,train_prediction) 
-        test_data = roc_auc_score(y_test,test_prediction)
-
-    elif(selected_evaluation_metrics == "roc_curve"):   
-        train_data = roc_curve(y_train,train_prediction)  
-        test_data = roc_curve(y_test,test_prediction)
-
-        #fpr,tpr,_ = roc_curve(y_train,train_prediction)
-        #roc_auc = auc(fpr,tpr)
-        #plt.plot(fpr,tpr)
-
-    show_evaluation_data(selected_evaluation_metrics, train_data, test_data)
-    
-
+    #accuracy_score
+    show_evaluation_data("accuracy_score", accuracy_score(y_train,train_prediction), accuracy_score(y_test,test_prediction))
+    st.divider()
+    # precision_score
+    show_evaluation_data("precision_score", precision_score(y_train,train_prediction), precision_score(y_test,test_prediction))
+    st.divider()
+    #recall_score
+    show_evaluation_data("recall_score", recall_score(y_train,train_prediction), recall_score(y_test,test_prediction))
+    st.divider()
+    # f1_score
+    show_evaluation_data("f1_score", f1_score(y_train,train_prediction), f1_score(y_test,test_prediction))
+    st.divider()
+    # roc_auc_score
+    show_evaluation_data("roc_auc_score", roc_auc_score(y_train,train_prediction), roc_auc_score(y_test,test_prediction))
+    st.divider()
+    # roc_curve
+    show_evaluation_data("roc_curve", roc_curve(y_train,train_prediction), roc_curve(y_test,test_prediction))
+    st.divider()
     pass
 
+    
+
+if select == "Home":
+    show_home_screen()
+    pass
+elif select == "Skewness":
+    show_Skewness()
+elif select == "Descriptive Statistics":
+    show_descriptive_statistics()
+    
+elif select == "Machine Learning":
+    show_machine_learning()
 
 elif select == "Prediction":
+    show_prediction()
     pass
 
 primaryColor = "#F63366"
