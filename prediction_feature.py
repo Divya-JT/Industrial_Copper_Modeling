@@ -3,10 +3,12 @@ import numpy as np
 import pickle
 import streamlit as st
 from sklearn.preprocessing import LabelEncoder 
-from sklearn.datasets import load_iris
+#from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 #from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.metrics import mean_squared_error
+import pandas as pd
 
 
 
@@ -67,7 +69,7 @@ def load_models():
 # Prediction functions
 def predict_regression(model, user_data):
     y_prediction = model.predict(user_data)
-    # Inverse transform for log transformation data
+    
     selling_price = np.exp(y_prediction[0])
     return round(selling_price, 2)
 
@@ -137,6 +139,34 @@ class prediction:
             #st.write(model)
             
             model = RandomForestRegressor()
+            # Din
+            data = pd.read_csv('final_data.csv')
+            
+
+            #X = data.drop(['selling_price_log'], axis = 1)
+            #X = X.drop(['quantity tons_log'], axis = 1)
+            #y = data ['selling_price_log']
+            #threshold = 0.3
+            #y_binary = (y >= threshold).astype(int)  # Convert to 0 or 1 based on the threshold
+
+            # Assume the selling_price_log column is the target variable
+            X = data.drop(['selling_price_log'], axis=1)
+            y = data ['selling_price_log']
+
+            x_train, x_test, y_train, y_test = train_test_split(X,y,test_size = 0.25)
+
+            # Train the model
+            model.fit(x_train, y_train)
+
+            # Make predictions on the test set
+            #y_pred = model.predict(x_test)
+            #st.write(f'y_pred: {y_pred}')
+
+            # Evaluate the model
+            #mse = mean_squared_error(y_test, y_pred)
+            #st.write(f'Mean Squared Error: {mse}')
+            #Din
+            
 
             # make array for all user input values in required order for model prediction
             user_data = np.array([[customer,
@@ -191,9 +221,9 @@ class prediction:
                 delivery_date = st.date_input(label='Delivery Date', min_value=date(2020,8,1), 
                                             max_value=date(2022,2,28), value=date(2020,8,1))
                 
-                #customer = st.text_input(label='Customer ID (Min: 12458000 & Max: 2147484000)')
+                customer = st.text_input(label='Customer ID (Min: 12458000 & Max: 2147484000)')
 
-                #selling_price_log = st.text_input(label='Selling Price (Min: 0.1 & Max: 100001000)')
+                selling_price_log = st.text_input(label='Selling Price (Min: 0.1 & Max: 100001000)')
 
                 application = st.selectbox(label='Application', options=options.application_values)
 
