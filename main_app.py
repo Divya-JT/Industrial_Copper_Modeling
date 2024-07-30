@@ -21,6 +21,11 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import GradientBoostingRegressor
 
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+
 # EVALUATION METRICS
 from sklearn.metrics import accuracy_score, auc,precision_score,recall_score,f1_score,roc_auc_score, roc_curve,auc
 from sklearn.metrics import mean_squared_error
@@ -192,7 +197,7 @@ def show_descriptive_statistics():
 
     pass
 
-## Machine learning
+#Machine learning
 def show_machine_learning():
     #df = st.session_state.industrial_copper_data
     #df.drop('material_ref'),axis = 1, inplace = True
@@ -244,24 +249,12 @@ def show_machine_learning():
     train_prediction = model.predict(x_train)
     test_prediction = model.predict(x_test)
 
-    # Example: Check types and unique values
-    #st.write("True labels type:", type(y_binary))
-    #st.write("True labels type:", type(y_train))
-    #st.write("Predicted values type:", type(train_prediction))
-    #st.write("Test values type:", type(test_prediction))
-
-    #c1,c2,c3,c4 = st.columns([1,1,1,1])
-    #c1.write(f"Unique true labels:{np.unique(y_binary)}")
-    #c2.write(f"unique labels type:{np.unique(y_train)}")
-    #c3.write(f"Unique predicted values:{np.unique(train_prediction)}")
-    #c4.write(f"Unique Test values:{np.unique(test_prediction)}")
-
+   
     threshold = 0.5
     train_prediction = (train_prediction > threshold).astype(int)
     test_prediction = (test_prediction > threshold).astype(int)
     #y_true = st.session_state.industrial_copper_data["selling_price"]
     #mse = mean_squared_error(y_binary, test_prediction)
-
 
     #accuracy_score
     show_evaluation_data("accuracy_score", accuracy_score(y_train,train_prediction), accuracy_score(y_test,test_prediction))
@@ -283,7 +276,63 @@ def show_machine_learning():
     st.divider()
     pass
 
+
+def categorical_data():
+   
+    algorithm_options = [
+    'KNeighbors Classifier',
+    'Decision Tree Classifier',
+    'Random Forest Classifier',
+    'Gradient Boosting Classifier'
+    ]
+    evaluation_matrics_options = ['accuracy_score','precision_score','recall_score','f1_score']
+
+    # Create the selectbox widget with a label and options
+    selected_algorithm = st.selectbox('Select an Algorithm', algorithm_options)
+    #selected_evaluation_metrics = st.selectbox('Select an Evaluation Metrics', evaluation_matrics_options)
     
+    model_map = {
+    'KNeighbors Classifier': KNeighborsClassifier(),
+    'Decision Tree Classifier': DecisionTreeClassifier(),
+    'Random Forest Classifier': RandomForestClassifier(),
+    'Gradient Boosting Classifier': GradientBoostingClassifier()
+    }
+
+    # Get the model class based on the selected algorithm name
+    model_class = model_map[selected_algorithm] 
+
+    final_df = pd.read_csv("final_data.csv")
+    df_c = final_df.copy()
+    # filter the status column values only 1 & 0 rows in a new dataframe ['Won':1 & 'Lost':0]
+    df_c = df_c[(df_c.status == 1) | (df_c.status == 0)]
+    x = df_c.drop('status', axis=1)
+    y = df_c['status']
+       
+    x_new, y_new = SMOTETomek().fit_resample(x,y)
+    x_train, x_test, y_train, y_test = train_test_split(x_new, y_new, test_size=0.2, random_state=42)
+    model = model_class
+    model.fit(x_train, y_train)
+    train_prediction = model.predict(x_train)
+    test_prediction = model.predict(x_test)
+    
+
+
+     #accuracy_score
+    show_evaluation_data("accuracy_score", accuracy_score(y_train,train_prediction), accuracy_score(y_test,test_prediction))
+    st.divider()
+    # precision_score
+    show_evaluation_data("precision_score", precision_score(y_train,train_prediction), precision_score(y_test,test_prediction))
+    st.divider()
+    #recall_score
+    show_evaluation_data("recall_score", recall_score(y_train,train_prediction), recall_score(y_test,test_prediction))
+    st.divider()
+    # f1_score
+    show_evaluation_data("f1_score", f1_score(y_train,train_prediction), f1_score(y_test,test_prediction))
+    st.divider()
+    
+    
+    
+pass
 
 if select == "Home":
     show_home_screen()
@@ -294,8 +343,13 @@ elif select == "Descriptive Statistics":
     show_descriptive_statistics()
     
 elif select == "Machine Learning":
-    show_machine_learning()
-
+    tab1, tab2 = st.tabs(['Regression', 'Classification'])
+    with tab1:
+        st.header("Regression")
+        show_machine_learning()
+    with tab2:
+        st.header("Classification")
+        categorical_data()
 elif select == "Prediction":
     show_prediction()
     pass

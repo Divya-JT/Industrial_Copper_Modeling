@@ -5,10 +5,11 @@ import streamlit as st
 from sklearn.preprocessing import LabelEncoder 
 #from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
-#from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.metrics import mean_squared_error
 import pandas as pd
+from imblearn.combine import SMOTETomek
 
 
 
@@ -143,11 +144,6 @@ class prediction:
             data = pd.read_csv('final_data.csv')
             
 
-            #X = data.drop(['selling_price_log'], axis = 1)
-            #X = X.drop(['quantity tons_log'], axis = 1)
-            #y = data ['selling_price_log']
-            #threshold = 0.3
-            #y_binary = (y >= threshold).astype(int)  # Convert to 0 or 1 based on the threshold
 
             # Assume the selling_price_log column is the target variable
             X = data.drop(['selling_price_log'], axis=1)
@@ -158,14 +154,7 @@ class prediction:
             # Train the model
             model.fit(x_train, y_train)
 
-            # Make predictions on the test set
-            #y_pred = model.predict(x_test)
-            #st.write(f'y_pred: {y_pred}')
-
-            # Evaluate the model
-            #mse = mean_squared_error(y_test, y_pred)
-            #st.write(f'Mean Squared Error: {mse}')
-            #Din
+            
             
 
             # make array for all user input values in required order for model prediction
@@ -193,45 +182,51 @@ class prediction:
             return selling_price
 
 
+
+
+
+
+
     def classification():
+       
+       
+       # get input from users
+       with st.form('Classification'):
 
-        # get input from users
-        with st.form('Classification'):
+        col1,col2,col3 = st.columns([0.5,0.1,0.5])
 
-            col1,col2,col3 = st.columns([0.5,0.1,0.5])
+        with col1:
 
-            with col1:
-
-                item_date = st.date_input(label='Item Date', min_value=date(2020,7,1), 
+            item_date = st.date_input(label='Item Date', min_value=date(2020,7,1), 
                                         max_value=date(2021,5,31), value=date(2020,7,1))
                 
-                quantity_log = st.text_input(label='Quantity Tons (Min: 0.00001 & Max: 1000000000)')
+            quantity_log = st.text_input(label='Quantity Tons (Min: 0.00001 & Max: 1000000000)')
 
-                country = st.selectbox(label='Country', options=options.country_values)
+            country = st.selectbox(label='Country', options=options.country_values)
 
-                item_type = st.selectbox(label='Item Type', options=options.item_type_values)
+            item_type = st.selectbox(label='Item Type', options=options.item_type_values)
 
-                thickness_log = st.number_input(label='Thickness', min_value=0.1, max_value=2500000.0, value=1.0)
+            thickness_log = st.number_input(label='Thickness', min_value=0.1, max_value=2500000.0, value=1.0)
 
-                product_ref = st.selectbox(label='Product Ref', options=options.product_ref_values)
+            product_ref = st.selectbox(label='Product Ref', options=options.product_ref_values)
 
 
-            with col3:
+        with col3:
 
-                delivery_date = st.date_input(label='Delivery Date', min_value=date(2020,8,1), 
+            delivery_date = st.date_input(label='Delivery Date', min_value=date(2020,8,1), 
                                             max_value=date(2022,2,28), value=date(2020,8,1))
                 
-                customer = st.text_input(label='Customer ID (Min: 12458000 & Max: 2147484000)')
+            customer = st.text_input(label='Customer ID (Min: 12458000 & Max: 2147484000)')
 
-                selling_price_log = st.text_input(label='Selling Price (Min: 0.1 & Max: 100001000)')
+            selling_price_log = st.text_input(label='Selling Price (Min: 0.1 & Max: 100001000)')
 
-                application = st.selectbox(label='Application', options=options.application_values)
+            application = st.selectbox(label='Application', options=options.application_values)
 
-                width = st.number_input(label='Width', min_value=1.0, max_value=2990000.0, value=1.0)
+            width = st.number_input(label='Width', min_value=1.0, max_value=2990000.0, value=1.0)
 
-                st.write('')
-                st.write('')
-                button = st.form_submit_button(label='SUBMIT')
+            st.write('')
+            st.write('')
+            button = st.form_submit_button(label='SUBMIT')
                 #style_submit_button()
         
         
@@ -247,9 +242,22 @@ class prediction:
             # load the classification pickle model
             #with open(r'models\classification_model.pkl', 'rb') as f:
                 #model = pickle.load(f)
-            model =  RandomForestRegressor()
+            model = RandomForestClassifier()
+            # Din
+            data = pd.read_csv('final_data.csv')
+            
+
+
+            # Assume the selling_price_log column is the target variable
+            X = data.drop(['status'], axis=1)
+            y = data ['status']
+
+            x_train, x_test, y_train, y_test = train_test_split(X,y,test_size = 0.25)
+
+            # Train the model
+            model.fit(x_train, y_train)
             # make array for all user input values in required order for model prediction
-            user_data = np.array([[ 
+            user_data = np.array([[customer,
                                 country, 
                                 options.item_type_dict[item_type], 
                                 application, 
@@ -257,7 +265,7 @@ class prediction:
                                 product_ref, 
                                 np.log(float(quantity_log)), 
                                 np.log(float(thickness_log)),
-                                #np.log(float(selling_price_log)),
+                                np.log(float(selling_price_log)),
                                 item_date.day, item_date.month, item_date.year,
                                 delivery_date.day, delivery_date.month, delivery_date.year]])
             
@@ -265,7 +273,12 @@ class prediction:
             y_prediction = model.predict(user_data)
 
             # we get the single output in list, so we access the output using index method
-            status = y_prediction[0]
-
-            return status
+            #status = y_prediction[0]
+            #y_p = model.predict(user_data)
+            
+            if y_prediction[0] == 1:
+                st.subheader(r"**Prediction Status:** ***WON***")
+            else:
+                st.write(r"**Prediction Status:** ***LOSS***")
+        return 
 
