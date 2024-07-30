@@ -16,10 +16,11 @@ Streamlit - to showcase the prediction
 
 Getting Started :
 
-Clone the repository: https://github.com/Divya-JT/airbnb_data_analysis.git
-
+Clone the repository: https://github.com/Divya-JT/Industrial_Copper_Modeling.git 
 Install required packages:
 
 Pandas,
 Streamlit,
-Plotly
+Plotly,
+SKlearn,
+Numpy
